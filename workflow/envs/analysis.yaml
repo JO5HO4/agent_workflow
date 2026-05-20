@@ -1,0 +1,19 @@
+name: hep-analysis-workflow
+channels:
+  - conda-forge
+dependencies:
+  - python>=3.10
+  - snakemake
+  - numpy
+  - pandas
+  - pyarrow
+  - pyyaml
+  - uproot
+  - awkward
+  - hist
+  - boost-histogram
+  - matplotlib
+  - scipy
+  - tqdm
+  # Optional: enable once compatibility with your Python/Snakemake stack is checked.
+  # - pyhf

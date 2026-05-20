@@ -1,0 +1,11 @@
+configfile: "config/config.yaml"
+configfile: "config/samples.yaml"
+
+include: "rules/common.smk"
+include: "rules/preprocessing.smk"
+include: "rules/event_selection.smk"
+include: "rules/categorization.smk"
+include: "rules/histograms.smk"
+include: "rules/systematics.smk"
+include: "rules/statistics.smk"
+include: "rules/plotting.smk"

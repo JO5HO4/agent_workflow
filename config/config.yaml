@@ -1,0 +1,57 @@
+analysis:
+  name: example_hep_analysis
+  luminosity:
+    value: 139.0
+    unit: fb^-1
+
+paths:
+  input_dir: input-data
+  output_dir: results
+
+defaults:
+  tree_name: Events
+  nominal_systematic: nominal
+  smoke:
+    sample: signal_demo
+    region: signal_region
+    systematic: nominal
+    variable: mass
+
+regions:
+  signal_region:
+    description: Placeholder signal-enriched region.
+    selection: "n_leptons >= 2 and met > 40"
+  control_region:
+    description: Placeholder background control region.
+    selection: "n_leptons == 1 and met > 30"
+
+variables:
+  mass:
+    expression: "mass"
+    label: "Candidate mass"
+    unit: GeV
+    binning:
+      bins: 20
+      low: 0.0
+      high: 200.0
+  met:
+    expression: "met"
+    label: "Missing transverse momentum"
+    unit: GeV
+    binning:
+      bins: 15
+      low: 0.0
+      high: 300.0
+
+systematics:
+  nominal:
+    type: nominal
+    description: Nominal event weights.
+  weight_up:
+    type: weight
+    variation: up
+    description: Placeholder upward weight variation.
+  weight_down:
+    type: weight
+    variation: down
+    description: Placeholder downward weight variation.
