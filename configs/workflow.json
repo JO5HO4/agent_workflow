@@ -1,0 +1,25 @@
+{
+  "workflow": {
+    "family": "vlq",
+    "preset": "full",
+    "input_dir": "input-data",
+    "work_dir": "runs/vlq/full"
+  },
+  "loop": {
+    "iterations": 2,
+    "target": "all"
+  },
+  "codex": {
+    "model": "gpt-5.4-mini",
+    "reasoning_effort": "low",
+    "sandbox": "workspace-write",
+    "ask_for_approval": "never",
+    "prompt_template": "prompts/task.md",
+    "instructions": "Focus on the staged scripts in the run workdir. Keep changes within docs/script_contracts.md."
+  },
+  "snakemake": {
+    "use_conda": true,
+    "dry_run": false,
+    "config": []
+  }
+}

@@ -1,38 +1,54 @@
-from __future__ import annotations
-
+import json
 from pathlib import Path
 from typing import Any
 
-import pandas as pd
+
+def write_json(path: str | Path, payload: dict[str, Any]) -> None:
+    output = Path(path)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
 
 
-def require_file(path: str | Path) -> Path:
-    candidate = Path(path)
-    if not candidate.exists():
-        raise FileNotFoundError(f"Required input is missing: {candidate}")
-    return candidate
+def region_name(region: dict[str, Any]) -> str:
+    return str(region.get("region_name") or region.get("region_id") or "unnamed_region")
 
 
 def main() -> None:
-    input_path = require_file(snakemake.input[0])
-    output = Path(snakemake.output[0])
-    output.parent.mkdir(parents=True, exist_ok=True)
-    sample = snakemake.wildcards.sample
-    region = snakemake.wildcards.region
-    cfg: dict[str, Any] = snakemake.config
-    selection = cfg["regions"][region]["selection"]
+    analysis = json.loads(Path(snakemake.input.analysis_config).read_text())
+    event_selection = json.loads(Path(snakemake.input.event_selection).read_text())
 
-    print(f"[categorization] sample={sample} region={region} selection={selection!r}")
-    df = pd.read_parquet(input_path)
-    try:
-        categorized = df.query(selection).copy()
-    except Exception as exc:
-        raise RuntimeError(f"Failed to evaluate selection for region={region}: {selection}") from exc
+    signal_regions = analysis.get("signal_regions", [])
+    control_regions = analysis.get("control_regions", [])
+    categories = [
+        {"name": region_name(region), "kind": "signal", "definition": region}
+        for region in signal_regions
+    ]
+    categories.extend(
+        {"name": region_name(region), "kind": "control", "definition": region}
+        for region in control_regions
+    )
 
-    categorized["region"] = region
-    categorized["status"] = "placeholder"
-    categorized.to_parquet(output, index=False)
-    print(f"[categorization] sample={sample} region={region} rows={len(categorized)} output={output}")
+    payload = {
+        "stage": "categorization",
+        "status": "ok",
+        "input_file_count": event_selection.get("input_file_count", 0),
+        "signal_region_count": len(signal_regions),
+        "control_region_count": len(control_regions),
+        "category_count": len(categories),
+        "categories": categories,
+    }
+    validation = {
+        "stage": "categorization",
+        "valid": len(categories) > 0,
+        "checks": {
+            "has_signal_regions": len(signal_regions) > 0,
+            "has_control_regions": len(control_regions) > 0,
+            "category_names_unique": len({item["name"] for item in categories}) == len(categories),
+        },
+    }
+
+    write_json(snakemake.output.summary, payload)
+    write_json(snakemake.output.validation, validation)
 
 
 if __name__ == "__main__":

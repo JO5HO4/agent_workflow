@@ -1,10 +1,13 @@
 rule event_selection:
     input:
-        f"{OUTDIR}/preselection/{{sample}}.parquet"
+        analysis_config=ANALYSIS_CONFIG
     output:
-        f"{OUTDIR}/selected/{{sample}}.parquet"
+        summary=EVENT_SELECTION_SUMMARY,
+        validation=f"{WORK_DIR}/results/validation/event_selection.json"
+    params:
+        input_dir=INPUT_DIR
     log:
-        "logs/event_selection/{sample}.log"
+        f"{WORK_DIR}/logs/event_selection.log"
     conda:
         "../envs/analysis.yaml"
     script:

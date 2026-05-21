@@ -1,11 +1,37 @@
-configfile: "config/config.yaml"
-configfile: "config/samples.yaml"
+import json
+import os
+from pathlib import Path
 
-include: "rules/common.smk"
-include: "rules/preprocessing.smk"
+configfile: os.environ.get("ATLAS_ANALYSIS_CONFIG", "configs/analysis/vlq.json")
+
+WORKFLOW_CONFIG_PATH = Path(os.environ.get("ATLAS_WORKFLOW_CONFIG", "configs/workflow.json"))
+if not WORKFLOW_CONFIG_PATH.exists():
+    raise FileNotFoundError(f"Workflow config not found: {WORKFLOW_CONFIG_PATH}")
+
+with WORKFLOW_CONFIG_PATH.open() as handle:
+    workflow_config = json.load(handle)
+
+WORK_DIR = workflow_config["workflow"]["work_dir"]
+INPUT_DIR = workflow_config["workflow"]["input_dir"]
+ANALYSIS_CONFIG = os.environ.get("ATLAS_ANALYSIS_CONFIG", "configs/analysis/vlq.json")
+
+EVENT_SELECTION_SUMMARY = f"{WORK_DIR}/results/summary/event_selection.json"
+CATEGORIZATION_SUMMARY = f"{WORK_DIR}/results/summary/categorization.json"
+STATISTICS_SUMMARY = f"{WORK_DIR}/results/summary/statistics.json"
+PLOT_SUMMARY = f"{WORK_DIR}/results/summary/plotting.json"
+WORKFLOW_SUMMARY = f"{WORK_DIR}/results/summary/workflow_summary.json"
+WORKFLOW_VALIDATION = f"{WORK_DIR}/results/validation/workflow_validation.json"
+REGION_TABLE = f"{WORK_DIR}/results/plots/region_overview.csv"
+
+
+rule all:
+    input:
+        WORKFLOW_SUMMARY,
+        WORKFLOW_VALIDATION,
+        REGION_TABLE
+
+
 include: "rules/event_selection.smk"
 include: "rules/categorization.smk"
-include: "rules/histograms.smk"
-include: "rules/systematics.smk"
 include: "rules/statistics.smk"
 include: "rules/plotting.smk"

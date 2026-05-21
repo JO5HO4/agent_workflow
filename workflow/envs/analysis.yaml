@@ -2,8 +2,8 @@ name: hep-analysis-workflow
 channels:
   - conda-forge
 dependencies:
-  - python>=3.10
-  - snakemake
+  - python=3.11
+  - pip
   - numpy
   - pandas
   - pyarrow
@@ -15,5 +15,7 @@ dependencies:
   - matplotlib
   - scipy
   - tqdm
+  - pip:
+      - snakemake
   # Optional: enable once compatibility with your Python/Snakemake stack is checked.
   # - pyhf

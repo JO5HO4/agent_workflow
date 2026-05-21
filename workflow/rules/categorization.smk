@@ -1,25 +1,13 @@
 rule categorization:
     input:
-        f"{OUTDIR}/selected/{{sample}}.parquet"
+        analysis_config=ANALYSIS_CONFIG,
+        event_selection=EVENT_SELECTION_SUMMARY
     output:
-        f"{OUTDIR}/categories/{{sample}}/{{region}}.parquet"
+        summary=CATEGORIZATION_SUMMARY,
+        validation=f"{WORK_DIR}/results/validation/categorization.json"
     log:
-        "logs/categorization/{sample}_{region}.log"
+        f"{WORK_DIR}/logs/categorization.log"
     conda:
         "../envs/analysis.yaml"
     script:
         "../scripts/categorization.py"
-
-rule cutflow:
-    input:
-        selected=f"{OUTDIR}/selected/{{sample}}.parquet",
-        categories=expand(f"{OUTDIR}/categories/{{sample}}/{{region}}.parquet", region=REGIONS)
-    output:
-        csv=f"{OUTDIR}/cutflows/{{sample}}.csv",
-        json=f"{OUTDIR}/cutflows/{{sample}}.json"
-    log:
-        "logs/cutflow/{sample}.log"
-    conda:
-        "../envs/analysis.yaml"
-    script:
-        "../scripts/make_cutflow.py"
