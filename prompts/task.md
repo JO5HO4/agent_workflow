@@ -1,1 +1,1 @@
-Execute the analysis task by modifying the analysis scripts
+Your task is to modify the analysis scripts within the Snakemake workflow in order to execute the VLQ analysis using the provided input-data.
