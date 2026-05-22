@@ -35,6 +35,16 @@ Merged summaries feed statistics, plotting, and reporting.
 Keep per-file script outputs compatible with the staged rules and preserve the
 summary and validation products expected by downstream stages.
 
+Per-file categorization summaries should provide input-derived region yields as:
+
+```text
+region_yields[region].data_yield_from_inputs
+region_yields[region].mc_yield_from_inputs
+```
+
+The merged outputs must include a region yield comparison table for observed
+data, expected background, and input-derived data/MC yields.
+
 ## Expected Loop
 
 1. Iteration 0 starts from `workflow/` and uses `prompts/task.md`.

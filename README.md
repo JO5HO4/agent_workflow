@@ -1,12 +1,12 @@
 # ATLAS Agent Workflow
 
 This repository provides a small Snakemake harness for iterating on ATLAS analysis
-scripts. The runner stages a workflow copy for each configured iteration, lets
-Codex edit the staged scripts, and then runs Snakemake on that iteration before
-starting the next one. The current base workflow is intentionally lightweight:
-it validates the analysis JSON, discovers input files, builds region/category
-summaries, records statistical-analysis metadata, and writes summary/validation
-artifacts.
+scripts. Each runner call stages one workflow copy, lets Codex edit the staged
+scripts, and then runs Snakemake on that iteration. Successful iterations are
+checkpointed so the next runner call continues with the next configured
+iteration. The current base workflow is intentionally lightweight: it validates
+the analysis JSON, discovers input files, builds region/category summaries,
+records statistical-analysis metadata, and writes summary/validation artifacts.
 
 ## Layout
 
@@ -19,27 +19,32 @@ artifacts.
 
 ## Run
 
-Run the Codex and Snakemake loop:
+Run one Codex and Snakemake iteration:
 
 ```bash
 python run.py
 ```
 
-Dry-run Snakemake after each Codex script revision:
+Dry-run Snakemake after one Codex script revision:
 
 ```bash
 python run.py --dry-run
 ```
 
-Run staged Snakemake iterations without invoking Codex:
+Run one staged Snakemake iteration without invoking Codex:
 
 ```bash
 python run.py --skip-codex
 ```
 
 Iteration 0 uses `codex.prompt`; later iterations use `codex.revise` and copy the
-scripts from the previous iteration before asking Codex to revise them. With the
-default work directory, each iteration is saved separately under:
+scripts from the previous iteration before asking Codex to revise them. Call
+`python run.py` again to advance while `loop.iterations` still permits another
+iteration. A completed iteration records `.run_complete.json`; a failed or
+interrupted new iteration is retried on the next call. Existing iteration
+directories created before checkpointing are accepted as completed predecessors.
+
+With the default work directory, each iteration is saved separately under:
 
 - `runs/iteration0/workflow/scripts/` and `runs/iteration0/results/`
 - `runs/iteration1/workflow/scripts/` and `runs/iteration1/results/`
@@ -75,6 +80,7 @@ For each iteration, outputs are written under its iteration directory:
 - `results/summary/workflow_summary.json`
 - `results/validation/workflow_validation.json`
 - `results/plots/region_overview.csv`
+- `results/yields/region_yields.csv`
 - `results/plots/region_overview.pdf`
 - `results/plots/region_overview.png`
 - `results/report/report.md`

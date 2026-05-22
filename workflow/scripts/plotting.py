@@ -22,6 +22,45 @@ def write_region_table(path: str | Path, categories: list[dict[str, Any]]) -> No
             writer.writerow({"name": category["name"], "kind": category["kind"]})
 
 
+def definition_value(category: dict[str, Any], key: str) -> Any:
+    return category.get("definition", {}).get(key)
+
+
+def write_region_yield_table(
+    path: str | Path, categories: list[dict[str, Any]], region_yields: dict[str, Any]
+) -> int:
+    output = Path(path)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    fieldnames = [
+        "region",
+        "kind",
+        "observed_data_spec",
+        "expected_background_spec",
+        "data_yield_from_inputs",
+        "mc_yield_from_inputs",
+    ]
+    with output.open("w", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fieldnames)
+        writer.writeheader()
+        rows = 0
+        for category in categories:
+            region = category["name"]
+            expected = definition_value(category, "expected_total_background") or {}
+            computed = region_yields.get(region, {})
+            writer.writerow(
+                {
+                    "region": region,
+                    "kind": category["kind"],
+                    "observed_data_spec": definition_value(category, "observed_data_yield"),
+                    "expected_background_spec": expected.get("value"),
+                    "data_yield_from_inputs": computed.get("data_yield_from_inputs"),
+                    "mc_yield_from_inputs": computed.get("mc_yield_from_inputs"),
+                }
+            )
+            rows += 1
+    return rows
+
+
 def write_region_plot(pdf_path: str | Path, png_path: str | Path, categories: list[dict[str, Any]]) -> None:
     kind_counts: dict[str, int] = {}
     for category in categories:
@@ -52,12 +91,14 @@ def main() -> None:
     categorization = json.loads(Path(snakemake.input.categorization).read_text())
     statistics = json.loads(Path(snakemake.input.statistics).read_text())
     categories = categorization.get("categories", [])
+    region_yields = categorization.get("region_yields", {})
 
     plotting = {
         "stage": "plotting",
         "status": "ok",
         "artifacts": {
             "region_table": str(snakemake.output.region_table),
+            "region_yield_table": str(snakemake.output.region_yield_table),
             "region_plot_pdf": str(snakemake.output.region_plot_pdf),
             "region_plot_png": str(snakemake.output.region_plot_png),
         },
@@ -85,10 +126,22 @@ def main() -> None:
             "categorization_completed": categorization.get("status") == "ok",
             "statistics_completed": statistics.get("status") == "ok",
             "region_table_rows": len(categories),
+            "root_events_read": event_selection.get("events_read", 0),
+            "input_region_yield_rows": len(region_yields),
         },
     }
 
     write_region_table(snakemake.output.region_table, categories)
+    yield_rows = write_region_yield_table(
+        snakemake.output.region_yield_table, categories, region_yields
+    )
+    validation["checks"]["region_yield_table_rows"] = yield_rows
+    validation["valid"] = (
+        validation["valid"]
+        and event_selection.get("events_read", 0) > 0
+        and bool(region_yields)
+        and yield_rows > 0
+    )
     write_region_plot(
         snakemake.output.region_plot_pdf,
         snakemake.output.region_plot_png,

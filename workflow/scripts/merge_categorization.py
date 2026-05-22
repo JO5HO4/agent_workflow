@@ -31,11 +31,25 @@ def analysis_categories(analysis: dict[str, Any]) -> list[dict[str, Any]]:
     return categories
 
 
+def merge_region_yields(summaries: list[dict[str, Any]]) -> dict[str, dict[str, float]]:
+    merged: dict[str, dict[str, float]] = {}
+    for summary in summaries:
+        for region, yields in summary.get("region_yields", {}).items():
+            target = merged.setdefault(
+                str(region),
+                {"data_yield_from_inputs": 0.0, "mc_yield_from_inputs": 0.0},
+            )
+            for key in target:
+                target[key] += float(yields.get(key, 0.0))
+    return merged
+
+
 def main() -> None:
     analysis = read_json(snakemake.input.analysis_config)
     summaries = [read_json(path) for path in snakemake.input.summaries]
     validations = [read_json(path) for path in snakemake.input.validations]
     categories = analysis_categories(analysis)
+    region_yields = merge_region_yields(summaries)
     signal_region_count = sum(category["kind"] == "signal" for category in categories)
     control_region_count = sum(category["kind"] == "control" for category in categories)
 
@@ -47,6 +61,7 @@ def main() -> None:
         "control_region_count": control_region_count,
         "category_count": len(categories),
         "categories": categories,
+        "region_yields": region_yields,
         "file_summaries": [str(path) for path in snakemake.input.summaries],
     }
     validation = {
@@ -56,9 +71,11 @@ def main() -> None:
             "per_file_jobs": len(summaries),
             "per_file_validations": len(validations),
             "has_categories": len(categories) > 0,
+            "has_input_region_yields": bool(region_yields),
             "category_names_unique": len({item["name"] for item in categories}) == len(categories),
         },
     }
+    validation["valid"] = validation["valid"] and bool(region_yields)
 
     write_json(snakemake.output.summary, payload)
     write_json(snakemake.output.validation, validation)

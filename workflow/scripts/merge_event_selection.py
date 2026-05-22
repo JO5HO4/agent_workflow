@@ -21,12 +21,14 @@ def main() -> None:
         for summary in summaries
         for input_file in summary.get("input_files", [])
     ]
+    events_read = sum(int(summary.get("events_read", 0)) for summary in summaries)
 
     payload = {
         "stage": "event_selection",
         "status": "ok",
         "input_file_count": len(input_files),
         "input_files": input_files,
+        "events_read": events_read,
         "file_summaries": [str(path) for path in snakemake.input.summaries],
     }
     validation = {
@@ -36,8 +38,10 @@ def main() -> None:
             "per_file_jobs": len(summaries),
             "per_file_validations": len(validations),
             "input_files_processed": len(input_files),
+            "root_events_read": events_read,
         },
     }
+    validation["valid"] = validation["valid"] and events_read > 0
 
     write_json(snakemake.output.summary, payload)
     write_json(snakemake.output.validation, validation)

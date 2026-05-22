@@ -16,6 +16,7 @@ def main() -> None:
     objectives = analysis.get("analysis_objectives", [])
     fit_setups = analysis.get("fit_setup", [])
     reported_results = analysis.get("results", [])
+    region_yields = categorization.get("region_yields", {})
 
     payload = {
         "stage": "statistics",
@@ -24,6 +25,7 @@ def main() -> None:
         "objective_count": len(objectives),
         "fit_setup_count": len(fit_setups),
         "reported_result_count": len(reported_results),
+        "region_yield_count": len(region_yields),
         "objectives": objectives,
         "fit_setups": fit_setups,
         "reported_results": reported_results,
@@ -35,8 +37,10 @@ def main() -> None:
             "has_objectives": len(objectives) > 0,
             "has_fit_setup": len(fit_setups) > 0,
             "has_categories": categorization.get("category_count", 0) > 0,
+            "has_input_region_yields": bool(region_yields),
         },
     }
+    validation["valid"] = validation["valid"] and bool(region_yields)
 
     write_json(snakemake.output.summary, payload)
     write_json(snakemake.output.validation, validation)

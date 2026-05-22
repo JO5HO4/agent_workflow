@@ -46,6 +46,7 @@ def main() -> None:
         f"- Analysis objectives: {workflow_summary.get('objective_count', 0)}",
         f"- Reported results: {workflow_summary.get('reported_result_count', 0)}",
         f"- Region table rows: {count_region_rows(snakemake.input.region_table)}",
+        f"- Region yield rows: {count_region_rows(snakemake.input.region_yield_table)}",
         "",
         "## Stage Status",
         "",
@@ -55,6 +56,15 @@ def main() -> None:
     lines.extend(
         f"| {name} | `{summary.get('status', 'unknown')}` | `{validation.get('valid', False)}` |"
         for name, summary, validation in stage_rows
+    )
+    lines.extend(
+        [
+            "",
+            "## Region Yield Comparison",
+            "",
+            f"- Yield table: `{snakemake.input.region_yield_table}`",
+            f"- Input-derived region yields present: `{bool(categorization.get('region_yields'))}`",
+        ]
     )
     lines.extend(
         [

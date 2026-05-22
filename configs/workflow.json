@@ -4,10 +4,10 @@
     "work_dir": "runs/"
   },
   "loop": {
-    "iterations": 1
+    "iterations": 5
   },
   "codex": {
-    "model": "gpt-5.5",
+    "model": "gpt-5.4-mini",
     "reasoning_effort": "low",
     "sandbox": "workspace-write",
     "approval_policy": "never",
