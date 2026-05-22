@@ -10,7 +10,7 @@
     "model": "gpt-5.5",
     "reasoning_effort": "low",
     "sandbox": "workspace-write",
-    "ask_for_approval": "never",
+    "approval_policy": "never",
     "prompt": "prompts/task.md",
     "revise": "prompts/revise.md"
   }

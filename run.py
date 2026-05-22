@@ -155,11 +155,14 @@ def build_codex_command(codex_config: dict[str, Any], scripts_dir: Path) -> list
     configured_flags = {
         "model": "--model",
         "sandbox": "--sandbox",
-        "ask_for_approval": "--ask-for-approval",
     }
     for config_key, flag in configured_flags.items():
         if codex_config.get(config_key):
             command.extend([flag, str(codex_config[config_key])])
+
+    if codex_config.get("approval_policy"):
+        approval_policy = codex_config["approval_policy"]
+        command.extend(["--config", f'approval_policy="{approval_policy}"'])
 
     if codex_config.get("reasoning_effort"):
         effort = codex_config["reasoning_effort"]
