@@ -3,6 +3,10 @@ from pathlib import Path
 from typing import Any
 
 
+def read_json(path: str | Path) -> dict[str, Any]:
+    return json.loads(Path(path).read_text())
+
+
 def write_json(path: str | Path, payload: dict[str, Any]) -> None:
     output = Path(path)
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -13,10 +17,7 @@ def region_name(region: dict[str, Any]) -> str:
     return str(region.get("region_name") or region.get("region_id") or "unnamed_region")
 
 
-def main() -> None:
-    analysis = json.loads(Path(snakemake.input.analysis_config).read_text())
-    event_selection = json.loads(Path(snakemake.input.event_selection).read_text())
-
+def analysis_categories(analysis: dict[str, Any]) -> list[dict[str, Any]]:
     signal_regions = analysis.get("signal_regions", [])
     control_regions = analysis.get("control_regions", [])
     categories = [
@@ -27,24 +28,34 @@ def main() -> None:
         {"name": region_name(region), "kind": "control", "definition": region}
         for region in control_regions
     )
+    return categories
+
+
+def main() -> None:
+    analysis = read_json(snakemake.input.analysis_config)
+    summaries = [read_json(path) for path in snakemake.input.summaries]
+    validations = [read_json(path) for path in snakemake.input.validations]
+    categories = analysis_categories(analysis)
+    signal_region_count = sum(category["kind"] == "signal" for category in categories)
+    control_region_count = sum(category["kind"] == "control" for category in categories)
 
     payload = {
         "stage": "categorization",
         "status": "ok",
-        "file_id": event_selection.get("file_id"),
-        "input_file_count": event_selection.get("input_file_count", 0),
-        "input_files": event_selection.get("input_files", []),
-        "signal_region_count": len(signal_regions),
-        "control_region_count": len(control_regions),
+        "input_file_count": sum(item.get("input_file_count", 0) for item in summaries),
+        "signal_region_count": signal_region_count,
+        "control_region_count": control_region_count,
         "category_count": len(categories),
         "categories": categories,
+        "file_summaries": [str(path) for path in snakemake.input.summaries],
     }
     validation = {
         "stage": "categorization",
-        "valid": len(categories) > 0,
+        "valid": len(categories) > 0 and all(item.get("valid", False) for item in validations),
         "checks": {
-            "has_signal_regions": len(signal_regions) > 0,
-            "has_control_regions": len(control_regions) > 0,
+            "per_file_jobs": len(summaries),
+            "per_file_validations": len(validations),
+            "has_categories": len(categories) > 0,
             "category_names_unique": len({item["name"] for item in categories}) == len(categories),
         },
     }

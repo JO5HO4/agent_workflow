@@ -15,8 +15,32 @@ WORK_DIR = workflow_config["workflow"]["work_dir"]
 INPUT_DIR = workflow_config["workflow"]["input_dir"]
 ANALYSIS_CONFIG = os.environ.get("ATLAS_ANALYSIS_CONFIG", "configs/analysis/vlq.json")
 
+
+def discover_data_files(input_dir):
+    """Give each visible input file a deterministic Snakemake wildcard id."""
+    root = Path(input_dir)
+    if not root.exists():
+        return {}
+
+    files = sorted(
+        path for path in root.rglob("*") if path.is_file() and not path.name.startswith(".")
+    )
+    return {f"file_{index:06d}": path.as_posix() for index, path in enumerate(files)}
+
+
+DATA_FILES = discover_data_files(INPUT_DIR)
+DATA_FILE_IDS = list(DATA_FILES)
+
+EVENT_SELECTION_FILE_SUMMARY = f"{WORK_DIR}/results/event_selection/{{file_id}}.json"
+EVENT_SELECTION_FILE_VALIDATION = (
+    f"{WORK_DIR}/results/validation/event_selection/{{file_id}}.json"
+)
 EVENT_SELECTION_SUMMARY = f"{WORK_DIR}/results/summary/event_selection.json"
 EVENT_SELECTION_VALIDATION = f"{WORK_DIR}/results/validation/event_selection.json"
+CATEGORIZATION_FILE_SUMMARY = f"{WORK_DIR}/results/categorization/{{file_id}}.json"
+CATEGORIZATION_FILE_VALIDATION = (
+    f"{WORK_DIR}/results/validation/categorization/{{file_id}}.json"
+)
 CATEGORIZATION_SUMMARY = f"{WORK_DIR}/results/summary/categorization.json"
 CATEGORIZATION_VALIDATION = f"{WORK_DIR}/results/validation/categorization.json"
 STATISTICS_SUMMARY = f"{WORK_DIR}/results/summary/statistics.json"

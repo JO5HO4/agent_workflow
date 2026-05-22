@@ -13,7 +13,7 @@ artifacts.
 - `configs/workflow.json`: input directory, work directory, loop count, and Codex prompts.
 - `configs/analysis/vlq.json`: analysis metadata and region/statistics definitions.
 - `workflow/Snakefile`: stable Snakemake entrypoint.
-- `workflow/rules/`: stage definitions.
+- `workflow/rules/`: stage definitions and per-file fan-out rules.
 - `workflow/scripts/`: editable stage implementations.
 - `runs/iteration<N>/`: generated workflow copies, outputs, and logs.
 
@@ -44,6 +44,25 @@ default work directory, each iteration is saved separately under:
 - `runs/iteration0/workflow/scripts/` and `runs/iteration0/results/`
 - `runs/iteration1/workflow/scripts/` and `runs/iteration1/results/`
 - `runs/iteration2/workflow/scripts/` and `runs/iteration2/results/`
+
+## Parallel Stages
+
+Snakemake discovers visible files below `workflow.input_dir` and assigns each one
+a deterministic `file_id`. Event selection and categorization run once per file,
+so Snakemake can schedule those jobs across the available cores:
+
+```text
+input file -> event selection -> categorization
+```
+
+The per-file categorization summaries are merged before statistics:
+
+```text
+per-file categorizations -> merged categorization -> statistics -> plotting -> report
+```
+
+Merged event-selection and categorization summaries keep the same downstream
+summary paths used by statistics, plotting, and reporting.
 
 ## Outputs
 

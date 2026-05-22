@@ -201,12 +201,13 @@ def build_snakemake_command(
 ) -> list[str]:
     """Build the Snakemake command for one staged workflow."""
     snakemake_config = workflow_config.get("snakemake", {})
+    cores = snakemake_config.get("cores", os.cpu_count() or 1)
     command = [
         "snakemake",
         "--snakefile",
         snakefile.as_posix(),
         "--cores",
-        str(snakemake_config.get("cores", 1)),
+        str(cores),
     ]
 
     if snakemake_config.get("use_conda", False):
