@@ -16,22 +16,27 @@ INPUT_DIR = workflow_config["workflow"]["input_dir"]
 ANALYSIS_CONFIG = os.environ.get("ATLAS_ANALYSIS_CONFIG", "configs/analysis/vlq.json")
 
 EVENT_SELECTION_SUMMARY = f"{WORK_DIR}/results/summary/event_selection.json"
+EVENT_SELECTION_VALIDATION = f"{WORK_DIR}/results/validation/event_selection.json"
 CATEGORIZATION_SUMMARY = f"{WORK_DIR}/results/summary/categorization.json"
+CATEGORIZATION_VALIDATION = f"{WORK_DIR}/results/validation/categorization.json"
 STATISTICS_SUMMARY = f"{WORK_DIR}/results/summary/statistics.json"
+STATISTICS_VALIDATION = f"{WORK_DIR}/results/validation/statistics.json"
 PLOT_SUMMARY = f"{WORK_DIR}/results/summary/plotting.json"
 WORKFLOW_SUMMARY = f"{WORK_DIR}/results/summary/workflow_summary.json"
 WORKFLOW_VALIDATION = f"{WORK_DIR}/results/validation/workflow_validation.json"
 REGION_TABLE = f"{WORK_DIR}/results/plots/region_overview.csv"
+REGION_PLOT_PDF = f"{WORK_DIR}/results/plots/region_overview.pdf"
+REGION_PLOT_PNG = f"{WORK_DIR}/results/plots/region_overview.png"
+REPORT = f"{WORK_DIR}/results/report/report.md"
 
 
 rule all:
     input:
-        WORKFLOW_SUMMARY,
-        WORKFLOW_VALIDATION,
-        REGION_TABLE
+        REPORT
 
 
 include: "rules/event_selection.smk"
 include: "rules/categorization.smk"
 include: "rules/statistics.smk"
 include: "rules/plotting.smk"
+include: "rules/report.smk"

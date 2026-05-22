@@ -7,7 +7,9 @@ rule plotting:
         summary=PLOT_SUMMARY,
         workflow_summary=WORKFLOW_SUMMARY,
         validation=WORKFLOW_VALIDATION,
-        region_table=REGION_TABLE
+        region_table=REGION_TABLE,
+        region_plot_pdf=REGION_PLOT_PDF,
+        region_plot_png=REGION_PLOT_PNG
     log:
         f"{WORK_DIR}/logs/plotting.log"
     conda:

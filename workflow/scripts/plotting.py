@@ -3,6 +3,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+import matplotlib.pyplot as plt
+
 
 def write_json(path: str | Path, payload: dict[str, Any]) -> None:
     output = Path(path)
@@ -20,6 +22,31 @@ def write_region_table(path: str | Path, categories: list[dict[str, Any]]) -> No
             writer.writerow({"name": category["name"], "kind": category["kind"]})
 
 
+def write_region_plot(pdf_path: str | Path, png_path: str | Path, categories: list[dict[str, Any]]) -> None:
+    kind_counts: dict[str, int] = {}
+    for category in categories:
+        kind = str(category["kind"])
+        kind_counts[kind] = kind_counts.get(kind, 0) + 1
+
+    output_paths = [Path(pdf_path), Path(png_path)]
+    for output in output_paths:
+        output.parent.mkdir(parents=True, exist_ok=True)
+
+    labels = list(kind_counts) or ["none"]
+    counts = [kind_counts[label] for label in labels] or [0]
+    figure, axis = plt.subplots(figsize=(6.4, 4.2))
+    bars = axis.bar(labels, counts, color=["#386cb0", "#fdb462"][: len(labels)])
+    axis.set_title("Analysis region overview")
+    axis.set_xlabel("Region kind")
+    axis.set_ylabel("Region count")
+    axis.set_ylim(0, max(counts + [1]) * 1.2)
+    axis.bar_label(bars, padding=3)
+    figure.tight_layout()
+    figure.savefig(output_paths[0])
+    figure.savefig(output_paths[1], dpi=160)
+    plt.close(figure)
+
+
 def main() -> None:
     event_selection = json.loads(Path(snakemake.input.event_selection).read_text())
     categorization = json.loads(Path(snakemake.input.categorization).read_text())
@@ -31,8 +58,10 @@ def main() -> None:
         "status": "ok",
         "artifacts": {
             "region_table": str(snakemake.output.region_table),
+            "region_plot_pdf": str(snakemake.output.region_plot_pdf),
+            "region_plot_png": str(snakemake.output.region_plot_png),
         },
-        "plot_type": "csv_overview",
+        "plot_type": "region_kind_overview",
         "category_count": len(categories),
     }
     workflow_summary = {
@@ -60,6 +89,11 @@ def main() -> None:
     }
 
     write_region_table(snakemake.output.region_table, categories)
+    write_region_plot(
+        snakemake.output.region_plot_pdf,
+        snakemake.output.region_plot_png,
+        categories,
+    )
     write_json(snakemake.output.summary, plotting)
     write_json(snakemake.output.workflow_summary, workflow_summary)
     write_json(snakemake.output.validation, validation)

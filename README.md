@@ -41,4 +41,7 @@ For the default config, outputs are written under `runs/vlq/full/`:
 - `results/summary/workflow_summary.json`
 - `results/validation/workflow_validation.json`
 - `results/plots/region_overview.csv`
+- `results/plots/region_overview.pdf`
+- `results/plots/region_overview.png`
+- `results/report/report.md`
 - `logs/*.log`

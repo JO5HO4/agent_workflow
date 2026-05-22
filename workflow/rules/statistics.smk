@@ -4,7 +4,7 @@ rule statistics:
         categorization=CATEGORIZATION_SUMMARY
     output:
         summary=STATISTICS_SUMMARY,
-        validation=f"{WORK_DIR}/results/validation/statistics.json"
+        validation=STATISTICS_VALIDATION
     log:
         f"{WORK_DIR}/logs/statistics.log"
     conda:

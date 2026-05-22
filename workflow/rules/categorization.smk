@@ -4,7 +4,7 @@ rule categorization:
         event_selection=EVENT_SELECTION_SUMMARY
     output:
         summary=CATEGORIZATION_SUMMARY,
-        validation=f"{WORK_DIR}/results/validation/categorization.json"
+        validation=CATEGORIZATION_VALIDATION
     log:
         f"{WORK_DIR}/logs/categorization.log"
     conda:

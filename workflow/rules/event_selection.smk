@@ -3,7 +3,7 @@ rule event_selection:
         analysis_config=ANALYSIS_CONFIG
     output:
         summary=EVENT_SELECTION_SUMMARY,
-        validation=f"{WORK_DIR}/results/validation/event_selection.json"
+        validation=EVENT_SELECTION_VALIDATION
     params:
         input_dir=INPUT_DIR
     log:
