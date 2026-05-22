@@ -4,7 +4,7 @@
     "work_dir": "runs/"
   },
   "loop": {
-    "iterations": 2
+    "iterations": 1
   },
   "codex": {
     "model": "gpt-5.5",
@@ -13,5 +13,8 @@
     "approval_policy": "never",
     "prompt": "prompts/task.md",
     "revise": "prompts/revise.md"
+  },
+  "snakemake": {
+    "cores": 10
   }
 }

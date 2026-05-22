@@ -11,7 +11,13 @@ if not WORKFLOW_CONFIG_PATH.exists():
 with WORKFLOW_CONFIG_PATH.open() as handle:
     workflow_config = json.load(handle)
 
-WORK_DIR = workflow_config["workflow"]["work_dir"]
+CONFIGURED_WORK_DIR = Path(str(workflow_config["workflow"]["work_dir"]))
+DEFAULT_WORK_DIR = (
+    CONFIGURED_WORK_DIR
+    if CONFIGURED_WORK_DIR.name.startswith("iteration")
+    else CONFIGURED_WORK_DIR / "iteration0"
+)
+WORK_DIR = str(os.environ.get("ATLAS_WORK_DIR", DEFAULT_WORK_DIR)).rstrip("/") or "."
 INPUT_DIR = workflow_config["workflow"]["input_dir"]
 ANALYSIS_CONFIG = os.environ.get("ATLAS_ANALYSIS_CONFIG", "configs/analysis/vlq.json")
 

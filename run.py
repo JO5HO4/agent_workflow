@@ -111,6 +111,7 @@ def make_iteration_env(
     env = os.environ.copy()
     env["ATLAS_WORKFLOW_CONFIG"] = iteration_config.as_posix()
     env["ATLAS_ANALYSIS_CONFIG"] = analysis_config.as_posix()
+    env["ATLAS_WORK_DIR"] = iteration_config.parent.as_posix()
     env.setdefault("XDG_CACHE_HOME", str((repo_root / ".snakemake/cache").resolve()))
     return env
 
@@ -213,8 +214,6 @@ def build_snakemake_command(
         str(cores),
     ]
 
-    if snakemake_config.get("use_conda", False):
-        command.append("--use-conda")
     if dry_run or snakemake_config.get("dry_run", False):
         command.append("--dry-run")
 

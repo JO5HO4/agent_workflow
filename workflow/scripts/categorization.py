@@ -1,4 +1,5 @@
 import json
+import traceback
 from pathlib import Path
 from typing import Any
 
@@ -9,11 +10,19 @@ def write_json(path: str | Path, payload: dict[str, Any]) -> None:
     output.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
 
 
+def write_log(message: str) -> None:
+    log_path = Path(snakemake.log[0])
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    with log_path.open("a") as handle:
+        handle.write(message.rstrip() + "\n")
+
+
 def region_name(region: dict[str, Any]) -> str:
     return str(region.get("region_name") or region.get("region_id") or "unnamed_region")
 
 
 def main() -> None:
+    write_log(f"Starting categorization from {snakemake.input.event_selection}")
     analysis = json.loads(Path(snakemake.input.analysis_config).read_text())
     event_selection = json.loads(Path(snakemake.input.event_selection).read_text())
 
@@ -51,7 +60,15 @@ def main() -> None:
 
     write_json(snakemake.output.summary, payload)
     write_json(snakemake.output.validation, validation)
+    write_log(f"Wrote summary: {snakemake.output.summary}")
+    write_log(f"Wrote validation: {snakemake.output.validation}")
+    write_log(f"Finished categorization with {len(categories)} categories.")
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception:
+        write_log("Categorization failed with an exception:")
+        write_log(traceback.format_exc())
+        raise

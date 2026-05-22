@@ -64,6 +64,10 @@ per-file categorizations -> merged categorization -> statistics -> plotting -> r
 Merged event-selection and categorization summaries keep the same downstream
 summary paths used by statistics, plotting, and reporting.
 
+The default workflow config sets `snakemake.cores` to `6`. Keep that number low
+enough for the memory used by the per-file event-selection jobs on the machine
+running the workflow.
+
 ## Outputs
 
 For each iteration, outputs are written under its iteration directory:
@@ -75,3 +79,7 @@ For each iteration, outputs are written under its iteration directory:
 - `results/plots/region_overview.png`
 - `results/report/report.md`
 - `logs/*.log`
+
+`run.py` sets the concrete work directory for each iteration. If the template
+Snakefile is run directly with the base workflow config, it defaults to
+`runs/iteration0/` instead of writing outputs into the `runs/` root.

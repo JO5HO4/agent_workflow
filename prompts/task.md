@@ -1,1 +1,3 @@
-Your task is to modify the analysis scripts within the Snakemake workflow in order to execute the VLQ analysis using the provided input-data.
+Implement the VLQ analysis in the staged Snakemake scripts. Keep per-file event
+selection and categorization outputs compatible with the existing rules and
+downstream merged summaries.
