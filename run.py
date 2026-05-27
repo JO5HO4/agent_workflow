@@ -1,15 +1,18 @@
-"""Run one checkpointed Codex and Snakemake analysis iteration.
+"""Run one checkpointed Codex or Snakemake analysis iteration phase.
 
-Each call advances one iteration under ``workflow.work_dir``:
+Each configured iteration advances in two explicit calls under
+``workflow.work_dir``:
 
-1. Copy a workflow into ``iteration<N>/workflow``.
-2. Ask Codex to edit only that copied workflow's scripts.
-3. Run Snakemake on the copied workflow and save outputs in the same iteration.
+1. ``run.py --codex`` copies a workflow into ``iteration<N>/workflow`` and asks
+   Codex to edit only that copied workflow's scripts.
+2. ``run.py --snakemake`` runs Snakemake on the Codex-edited workflow and saves
+   outputs in the same iteration.
 
 Iteration 0 starts from the repository's template workflow and uses
 ``codex.prompt``. Later iterations start from the previous iteration's edited
-workflow and use ``codex.revise``. A successful call records a checkpoint so a
-later call continues with the next allowed iteration.
+workflow and use ``codex.revise``. A successful Snakemake phase records a
+checkpoint so a later ``--codex`` call continues with the next allowed
+iteration.
 """
 
 import argparse
@@ -31,6 +34,7 @@ DEFAULT_WORKFLOW_CONFIG = "configs/workflow.json"
 TEMPLATE_WORKFLOW_DIR = "workflow"
 CHECKPOINT_FILE = ".run_complete.json"
 IN_PROGRESS_FILE = ".run_in_progress"
+CODEX_COMPLETE_FILE = ".codex_complete.json"
 
 CODEX_GUARDRAILS = """
 You are working in a staged Snakemake script directory.
@@ -42,12 +46,22 @@ You may read parent directories when you need workflow context.
 
 def parse_args() -> argparse.Namespace:
     """Read command-line options for one checkpointed iteration."""
-    parser = argparse.ArgumentParser(description="Run Codex edits followed by Snakemake.")
+    parser = argparse.ArgumentParser(
+        description="Run one Codex or Snakemake iteration phase."
+    )
+    phase = parser.add_mutually_exclusive_group(required=True)
+    phase.add_argument(
+        "--codex", action="store_true", help="Stage the next iteration and run Codex."
+    )
+    phase.add_argument(
+        "--snakemake",
+        action="store_true",
+        help="Run Snakemake for the iteration most recently completed by Codex.",
+    )
     parser.add_argument("--workflow-config", default=DEFAULT_WORKFLOW_CONFIG)
     parser.add_argument("--analysis-config", default=DEFAULT_ANALYSIS_CONFIG)
     parser.add_argument("--target", default=None)
     parser.add_argument("--dry-run", action="store_true")
-    parser.add_argument("--skip-codex", action="store_true")
     return parser.parse_args()
 
 
@@ -100,6 +114,11 @@ def in_progress_path(iteration_dir: Path) -> Path:
     return iteration_dir / IN_PROGRESS_FILE
 
 
+def codex_complete_path(iteration_dir: Path) -> Path:
+    """Return the marker for an iteration that is ready for Snakemake."""
+    return iteration_dir / CODEX_COMPLETE_FILE
+
+
 def is_legacy_iteration(iteration_dir: Path) -> bool:
     """Recognize pre-checkpoint iteration directories that can be revised."""
     return (
@@ -112,6 +131,15 @@ def is_legacy_iteration(iteration_dir: Path) -> bool:
 def is_completed_iteration(iteration_dir: Path) -> bool:
     """Accept explicit checkpoints and older staged iterations as complete."""
     return checkpoint_path(iteration_dir).exists() or is_legacy_iteration(iteration_dir)
+
+
+def is_codex_complete_iteration(iteration_dir: Path) -> bool:
+    """Return whether Codex finished for an iteration still awaiting Snakemake."""
+    return (
+        iteration_dir.exists()
+        and in_progress_path(iteration_dir).exists()
+        and codex_complete_path(iteration_dir).exists()
+    )
 
 
 def next_iteration_index(
@@ -129,11 +157,18 @@ def mark_in_progress(iteration_dir: Path) -> None:
     in_progress_path(iteration_dir).write_text("staged\n")
 
 
+def write_codex_complete(iteration_dir: Path, index: int) -> None:
+    """Record that Codex completed and the iteration is ready for Snakemake."""
+    payload = {"iteration": index, "status": "codex_complete"}
+    codex_complete_path(iteration_dir).write_text(json.dumps(payload, indent=2) + "\n")
+
+
 def write_checkpoint(iteration_dir: Path, index: int) -> None:
     """Record a successful iteration for the next ``run.py`` call."""
     payload = {"iteration": index, "status": "complete"}
     checkpoint_path(iteration_dir).write_text(json.dumps(payload, indent=2) + "\n")
     in_progress_path(iteration_dir).unlink(missing_ok=True)
+    codex_complete_path(iteration_dir).unlink(missing_ok=True)
 
 
 def write_iteration_config(
@@ -151,6 +186,43 @@ def write_iteration_config(
     config_path = iteration_dir / "workflow.json"
     config_path.write_text(json.dumps(iteration_config, indent=2) + "\n")
     return config_path
+
+
+def ensure_staged_iteration(
+    repo_root: Path,
+    workflow_config: dict[str, Any],
+    index: int,
+    previous_iteration: Path | None,
+) -> Path:
+    """Return a staged workflow, creating it when the iteration is new."""
+    current_iteration = iteration_dir(repo_root, workflow_config, index)
+    staged_workflow = current_iteration / "workflow"
+    if in_progress_path(current_iteration).exists() and staged_workflow.exists():
+        return staged_workflow
+
+    source_workflow = (
+        previous_iteration / "workflow"
+        if previous_iteration is not None
+        else repo_root / TEMPLATE_WORKFLOW_DIR
+    )
+    staged_workflow = stage_workflow(source_workflow, current_iteration)
+    mark_in_progress(current_iteration)
+    return staged_workflow
+
+
+def pending_snakemake_index(
+    repo_root: Path, workflow_config: dict[str, Any], iterations: int
+) -> int | None:
+    """Find the staged iteration whose Codex phase has completed."""
+    for index in range(iterations):
+        current_iteration = iteration_dir(repo_root, workflow_config, index)
+        if is_codex_complete_iteration(current_iteration):
+            return index
+        if in_progress_path(current_iteration).exists():
+            return None
+        if not is_completed_iteration(current_iteration):
+            return None
+    return None
 
 
 def make_iteration_env(
@@ -271,6 +343,11 @@ def build_snakemake_command(
     return command
 
 
+def snakemake_will_dry_run(workflow_config: dict[str, Any], dry_run: bool) -> bool:
+    """Return whether the Snakemake phase will avoid producing outputs."""
+    return dry_run or bool(workflow_config.get("snakemake", {}).get("dry_run", False))
+
+
 def run_snakemake(
     repo_root: Path,
     workflow_config: dict[str, Any],
@@ -304,29 +381,34 @@ def main() -> int:
     iterations = require_iterations(workflow_config)
     codex_config = workflow_config.get("codex", {})
 
-    index = next_iteration_index(repo_root, workflow_config, iterations)
-    if index is None:
-        print(f"All {iterations} configured iterations are already complete.", flush=True)
-        return 0
+    if args.codex:
+        index = next_iteration_index(repo_root, workflow_config, iterations)
+        if index is None:
+            print(f"All {iterations} configured iterations are already complete.", flush=True)
+            return 0
 
-    previous_iteration = (
-        iteration_dir(repo_root, workflow_config, index - 1) if index > 0 else None
-    )
-    if previous_iteration is not None and not is_completed_iteration(previous_iteration):
-        raise RuntimeError(f"Previous iteration is not complete: {previous_iteration}")
+        current_iteration = iteration_dir(repo_root, workflow_config, index)
+        if is_codex_complete_iteration(current_iteration):
+            print(
+                f"Iteration {index} already completed Codex; run `python run.py --snakemake` next.",
+                flush=True,
+            )
+            return 0
 
-    source_workflow = (
-        previous_iteration / "workflow"
-        if previous_iteration is not None
-        else repo_root / TEMPLATE_WORKFLOW_DIR
-    )
-    current_iteration = iteration_dir(repo_root, workflow_config, index)
-    staged_workflow = stage_workflow(source_workflow, current_iteration)
-    mark_in_progress(current_iteration)
-    iteration_config = write_iteration_config(workflow_config, current_iteration)
-    env = make_iteration_env(repo_root, iteration_config, analysis_config_path)
+        previous_iteration = (
+            iteration_dir(repo_root, workflow_config, index - 1) if index > 0 else None
+        )
+        if previous_iteration is not None and not is_completed_iteration(
+            previous_iteration
+        ):
+            print(f"Previous iteration is not complete: {previous_iteration}", flush=True)
+            return 0
 
-    if not args.skip_codex:
+        staged_workflow = ensure_staged_iteration(
+            repo_root, workflow_config, index, previous_iteration
+        )
+        iteration_config = write_iteration_config(workflow_config, current_iteration)
+        env = make_iteration_env(repo_root, iteration_config, analysis_config_path)
         prompt_path = prompt_path_for_iteration(repo_root, codex_config, index)
         prompt = build_codex_prompt(prompt_path, index, previous_iteration)
         returncode = run_codex(
@@ -334,6 +416,20 @@ def main() -> int:
         )
         if returncode != 0:
             return returncode
+        write_codex_complete(current_iteration, index)
+        return 0
+
+    index = pending_snakemake_index(repo_root, workflow_config, iterations)
+    if index is None:
+        print("No Codex-complete iteration is waiting for Snakemake.", flush=True)
+        return 0
+
+    current_iteration = iteration_dir(repo_root, workflow_config, index)
+    staged_workflow = current_iteration / "workflow"
+    iteration_config = current_iteration / "workflow.json"
+    if not iteration_config.exists():
+        iteration_config = write_iteration_config(workflow_config, current_iteration)
+    env = make_iteration_env(repo_root, iteration_config, analysis_config_path)
 
     returncode = run_snakemake(
         repo_root,
@@ -346,6 +442,13 @@ def main() -> int:
     )
     if returncode != 0:
         return returncode
+
+    if snakemake_will_dry_run(workflow_config, args.dry_run):
+        print(
+            f"Iteration {index} Snakemake dry-run completed; checkpoint not written.",
+            flush=True,
+        )
+        return 0
 
     write_checkpoint(current_iteration, index)
     return 0
